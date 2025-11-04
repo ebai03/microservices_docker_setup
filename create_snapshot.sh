@@ -27,3 +27,22 @@ CURRENT_USER="${SUDO_USER:-$(whoami)}"
 LOG_FILE="/var/log/create_snapshot.log"
 
 # Log functions
+log() {
+    local level=$1
+    shift
+    local message="$@"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo -e "${timestamp} [${level}] ${message}" | tee -a "$LOG_FILE"
+}
+
+log_info() { log "INFO" "$@"; }
+log_success() { log "SUCCESS" "$@"; }
+log_warning() { log "WARNING" "$@"; }
+log_error() { log "ERROR" "$@"; }
+
+check_root () {
+    if [[ $EUID -ne 0 ]]; then
+    echo "This script must be run as root" 
+    exit 1
+    fi
+}
