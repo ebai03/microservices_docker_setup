@@ -85,9 +85,47 @@ create_backup() {
         "${exclude_dirs[@]}" \
         -C / . 2>&1 | grep -v "tar:Removing" | tee -a "$LOG_FILE"; then
         log_success "Finished backing up"
+        
     else
         log_error "Error while generating backup"
         return 1
     fi
-
 }
+
+
+# Captures network configuration
+create_network_snapshot() {
+    log_info "Capturing network config"
+
+    sudo ip ad show > "$SNAPSHOT_PATH/network_interfaces.txt"
+
+    sudo ip r show > "$SNAPSHOT_PATH/network_routes.txt"
+
+    log_success "Network info captured"
+}
+
+# Verify prerequisites
+check_root
+
+# Generate backup
+create_backup
+create_network_snapshot
+
+# Show results
+
+echo  ""
+echo  "      _____________________________"
+echo  "    ( Backup generated succesfully!)"
+echo  "      ----------------   ----------"
+echo  "                 (__) \/     "
+echo  "          \------(oo)"
+echo  "           ||    (__)"
+echo  "           ||w--||     \|/"
+echo  " \|/"
+echo  "-------------------------------------"
+echo  "PATH:"
+echo "  $SNAPSHOT_PATH"
+echo  "-------------------------------------"
+echo  "SIZE:"
+du -sh "$SNAPSHOT_PATH"
+echo  "-------------------------------------"
