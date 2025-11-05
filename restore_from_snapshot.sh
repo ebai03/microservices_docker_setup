@@ -51,6 +51,8 @@ log_info "Using snapshot: $SNAPSHOT_PATH"
 
 log_warning "All changes done after the snapshot was taken will be reverted"
 
+check_prerequisites
+
 echo ""
 read -p "Continue with restoration? (Write Y to confirm): " confirm
 
@@ -59,5 +61,17 @@ if [[ "$confirm" != "Y" ]] then
     exit 0
 fi
 
-# Restore the system from the tarball
+# Restore the system
+# Extract contents into root dir and capture errors
+if tar -xzf "$SNAPSHOT_PATH" -C / 2>&1 | tee -a "$LOG_FILE"; then
+    log_success "Restoration complete"
+
+    log_info "The system will reboot in 5 seconds..."
+    sleep 5
+
+    reboot
+else
+    log_error "An error ocurred while restoring"
+    exit 1
+fi
 
