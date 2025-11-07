@@ -36,6 +36,57 @@ check_docker_is_not_active() {
     fi
 }
 
+configure_docker_network() {
+    log_info "Configuring Docker network range..."
+    
+    # Create docker config directory if it doesn't exist
+    mkdir -p /etc/docker
+    
+    # Create daemon.json with custom network configuration
+    # Using 10.10.0.0/16 to avoid conflicts with 172.24.x.x networks
+    cat > /etc/docker/daemon.json <<'EOF'
+{
+  "bip": "10.10.0.1/16",
+  "fixed-cidr": "10.10.0.0/16",
+  "storage-driver": "overlay2",
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  }
+}
+EOF
+    
+    if [[ $? -eq 0 ]]; then
+        log_success "Docker daemon.json created successfully"
+        log_info "Docker network configuration:"
+        log_info "  - Bridge IP (bip): 10.10.0.1/16"
+        log_info "  - CIDR range: 10.10.0.0/16"
+        log_info "  - Storage driver: overlay2"
+        cat /etc/docker/daemon.json | tee -a "$LOG_FILE"
+    else
+        log_error "Failed to create /etc/docker/daemon.json"
+        exit 1
+    fi
+}
+
+verify_docker_config() {
+    log_info "Verifying Docker configuration..."
+    
+    if [[ ! -f /etc/docker/daemon.json ]]; then
+        log_error "Docker configuration file not found"
+        exit 1
+    fi
+    
+    # Validate JSON syntax
+    if ! python3 -m json.tool /etc/docker/daemon.json > /dev/null 2>&1; then
+        log_error "Invalid JSON in /etc/docker/daemon.json"
+        exit 1
+    fi
+    
+    log_success "Docker configuration is valid"
+}
+
 log_info "Installing upgrades that provide security patches or bugfixes"
 # Make any necessary upgrades
 dnf upgrade-minimal
