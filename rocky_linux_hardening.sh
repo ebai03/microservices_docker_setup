@@ -133,6 +133,37 @@ EOF
 main() {
     local phase_to_run="all"
     
+    # Process arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h|--help)
+                show_usage
+                exit 0
+                ;;
+            -l|--list-phases)
+                list_phases
+                exit 0
+                ;;
+            -f|--full)
+                phase_to_run="all"
+                shift
+                ;;
+            -p|--phase)
+                phase_to_run="$2"
+                shift 2
+                ;;
+            -b|--backup-dir)
+                BACKUP_DIR="$2"
+                shift 2
+                ;;
+            *)
+                log_error "Unknown option: $1"
+                show_usage
+                exit 1
+                ;;
+        esac
+    done
+    
     # Initial checks
     check_root
     check_rocky_linux
@@ -155,6 +186,33 @@ main() {
             phase_firewall
             phase_automatic_updates
             phase_verification
+            ;;
+        1|preparation)
+            phase_preparation
+            ;;
+        2|openscap)
+            phase_openscap
+            ;;
+        3|tmp-partition)
+            phase_tmp_partition
+            ;;
+        4|grub)
+            phase_grub_password
+            ;;
+        5|selinux)
+            phase_selinux
+            ;;
+        6|ssh)
+            phase_ssh_hardening
+            ;;
+        7|fail2ban)
+            phase_fail2ban
+            ;;
+        8|firewall)
+            phase_firewall
+            ;;
+        9|updates)
+            phase_automatic_updates
             ;;
         *)
             log_error "Unknown phase: $phase_to_run"
