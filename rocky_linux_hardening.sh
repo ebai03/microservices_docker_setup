@@ -125,3 +125,49 @@ Available hardening phases:
 9.  Updates: Configure automatic security patches
 EOF
 }
+
+################################################################################
+# Main Execution
+################################################################################
+
+main() {
+    local phase_to_run="all"
+    
+    # Initial checks
+    check_root
+    check_rocky_linux
+    
+    log_info "Starting Rocky Linux 9.3 hardening script"
+    log_info "Log file: $LOG_FILE"
+    log_info "Backup directory: $BACKUP_DIR"
+    log_info "Date and time: $(date)"
+    
+    # Run phases
+    case $phase_to_run in
+        all)
+            phase_preparation
+            phase_openscap
+            phase_tmp_partition
+            phase_grub_password
+            phase_selinux
+            phase_ssh_hardening
+            phase_fail2ban
+            phase_firewall
+            phase_automatic_updates
+            phase_verification
+            ;;
+        *)
+            log_error "Unknown phase: $phase_to_run"
+            list_phases
+            exit 1
+            ;;
+    esac
+    
+    log_success "Hardening script completed"
+    log_info "Backups are located at: $BACKUP_DIR"
+    log_info "Check the log at: $LOG_FILE"
+    
+    echo
+    log_warning "IMPORTANT: It is recommended to reboot the system to apply all changes"
+    log_warning "Especially SELinux which requires reboot to enter enforcing mode"
+}
