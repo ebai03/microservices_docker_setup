@@ -26,6 +26,42 @@ MAX_FAILED_TICKS=2        # Restore after MAX_FAILED consecutive ticks
 CURRENT_USER="${SUDO_USER:-$(whoami)}"
 LOG_FILE="/var/log/create_snapshot.log"
 
+
+# Creates a list of dirs that will be included in the snapshot
+
+create_include_list() {
+    local includes_file="$SNAPSHOT_PATH/includes.txt"
+    
+    # Will store the list of included dirs in
+    # $SNAPSHOT_PATH/includes.txt
+    cat > "$includes_file" << 'INCLUDES'
+# ============================================================================
+# FILES AND DIRS TO INCLUDE IN THE SNAPSHOT
+# ============================================================================
+# SYS CONFIG
+etc/
+home/
+root/
+
+# ADDITIONALLY INSTALLED APPS
+opt/
+usr/local/
+
+# variable data, which includes spool directories and files
+var/spool/
+var/lib/docker/
+
+# NETWORK CONFIG
+etc/sysconfig/
+etc/NetworkManager/
+etc/hostname
+etc/resolv.conf
+
+# SSH
+root/.ssh/
+INCLUDES
+}
+
 # Log functions
 log() {
     local level=$1
@@ -42,7 +78,7 @@ log_success() { log "SUCCESS" "$@"; }
 log_warning() { log "WARNING" "$@"; }
 log_error() { log "ERROR" "$@"; }
 
-check_root () {
+check_prerequisites () {
     if [[ $EUID -ne 0 ]]; then
     echo "This script must be run as root" 
     exit 1
@@ -51,47 +87,32 @@ check_root () {
     log_success "Verified UID (root)"
 }
 
-# Creates a backup of most system directories, excluding some
-# that were deemed as not necessary to backup.
-# Ref: https://serverfault.com/questions/74696/linux-what-directories-should-i-exclude-when-backing-up-a-server
-create_backup() {
-    log_info "Creating snapshot..."
+# Creates a backup of some directories and files
+create_selective_backup() {
+    log_info "Creating selective snapshot..."
 
     mkdir -p "$SNAPSHOT_PATH"
 
-    local exclude_dirs=(
-        '--exclude=/proc/*'
-        '--exclude=/sys/*'
-        '--exclude=/dev/*'
-        '--exclude=/run/*'
-        '--exclude=/tmp/*'
-        '--exclude=/mnt/backups/*'
-        '--exclude=/media/*'
-        '--exclude=/lost+found'
-        '--exclude=/var/log/*'
-        '--exclude=/var/cache/*'
-        '--exclude=/var/tmp/*'
-        '--exclude=.snapshots'
-        '--exclude=$RECYCLE.BIN'
-    )
+    create_include_list
 
-    log_info "Generating backup, standby..."
+    log_info "You can check progress with:"
+    log_info "  watch -n 5 'du -sh $SNAPSHOT_PATH'"
+    echo ""
 
-    # Creates the backup and logs any errors
-    # ---------------------------------------------
-    # 2>&1 replaces fd 2 (stderr) with fd 1 (stdout)
-    # https://blog.tratif.com/2023/01/09/bash-tips-1-logging-in-shell-scripts/
-    if sudo tar -czf "$SNAPSHOT_PATH/system_backup.tar.gz" \
-        "${exclude_dirs[@]}" \
-        -C / . 2>&1 | grep -v "tar:Removing" | tee -a "$LOG_FILE"; then
-        log_success "Finished backing up"
-        
+    if tar -cf - \
+        --files-from="$SNAPSHOT_PATH/includes.txt" \
+        -C / 2>/dev/null | \
+        pigz > "$SNAPSHOT_PATH/system_backup.tar.gz" 2>&1; then
+        log_success "Backup completed"
     else
-        log_error "Error while generating backup"
-        return 1
+        log_error "While backing up"
     fi
-}
 
+    # Result info
+    local size=$(du -h "$SNAPSHOT_PATH/system_backup.tar.gz" | cut -f1)
+    log_info "Snapshot size: $size"
+
+}
 
 # Captures network configuration
 create_network_snapshot() {
@@ -101,14 +122,17 @@ create_network_snapshot() {
 
     sudo ip r show > "$SNAPSHOT_PATH/network_routes.txt"
 
+    sudo ip rule show > "$SNAPSHOT_PATH/network_rules.txt" 2>/dev/null || true
+
     log_success "Network info captured"
 }
 
 # Verify prerequisites
-check_root
+check_prerequisites
+
 
 # Generate backup
-create_backup
+create_selective_backup
 create_network_snapshot
 
 # Show results
