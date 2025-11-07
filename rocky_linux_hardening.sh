@@ -223,6 +223,7 @@ phase_ssh_hardening() {
     
     # Check public key authentication configuration
     if ! grep -q "^PubkeyAuthentication" /etc/ssh/sshd_config; then
+        log_info "PubkeyAuthentication not configured, setting up..."
         echo "PubkeyAuthentication yes" >> /etc/ssh/sshd_config
     else
         sed -i 's/^#PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
@@ -230,11 +231,14 @@ phase_ssh_hardening() {
     
     # Check authorized keys file
     if ! grep -q "^AuthorizedKeysFile" /etc/ssh/sshd_config; then
+        log_info "AuthorizedKeysFile not configured, setting up..."
         echo "AuthorizedKeysFile .ssh/authorized_keys" >> /etc/ssh/sshd_config
     fi
     
-    # Additional security configurations recommended by CIS
-    cat >> /etc/ssh/sshd_config << 'EOF'
+    if ! grep -q "^# CIS security configurations" /etc/ssh/sshd_config; then
+        log_info "CIS security configurations not found, setting up..."
+        # Additional security configurations recommended by CIS
+        cat >> /etc/ssh/sshd_config << 'EOF'
 
 # CIS security configurations
 PermitRootLogin no
@@ -245,6 +249,7 @@ MaxAuthTries 5
 ClientAliveInterval 300
 ClientAliveCountMax 2
 EOF
+    fi
     
     # Validate sshd_config syntax
     if sshd -t &>> "$LOG_FILE"; then
