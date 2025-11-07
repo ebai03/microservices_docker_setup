@@ -1,6 +1,7 @@
 #!/bin/bash
 
 CURRENT_USER="${SUDO_USER:-$(whoami)}"
+LOG_FILE="/var/log/install_docker.log"
 
 # Logging functions
 log() {
@@ -205,7 +206,6 @@ main() {
     verify_docker_network
     echo ""
     
-    show_summary
 }
 
 # Execute main function
