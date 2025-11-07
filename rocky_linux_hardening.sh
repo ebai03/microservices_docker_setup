@@ -83,6 +83,76 @@ phase_preparation() {
 }
 
 ################################################################################
+# Phase 2: OpenSCAP and CIS Benchmark
+################################################################################
+
+phase_openscap() {
+    log_info "=== PHASE 2: OPENSCAP INSTALLATION AND CONFIGURATION ==="
+    
+    # Install OpenSCAP
+    log_info "Installing OpenSCAP and SCAP Security Guide..."
+    if ! dnf install -y openscap-scanner scap-security-guide &>> "$LOG_FILE"; then
+        log_error "Failed to install OpenSCAP"
+        return 1
+    fi
+    log_success "OpenSCAP installed successfully"
+    
+    # Generate remediation script
+    log_info "Generating CIS Server L1 profile remediation script..."
+    local remediate_script="${BACKUP_DIR}/remediate-cis.sh"
+    
+    if ! oscap xccdf generate fix \
+        --profile xccdf_org.ssgproject.content_profile_cis_server_l1 \
+        /usr/share/xml/scap/ssg/content/ssg-rl9-ds.xml > "$remediate_script" 2>> "$LOG_FILE"; then
+        log_error "Failed to generate remediation script"
+        return 1
+    fi
+    
+    # Apply patches: Disable password expiration to avoid lockouts
+    log_info "Applying patches to remediation script..."
+    sed -i "s/var_accounts_maximum_age_login_defs='[0-9]*'/var_accounts_maximum_age_login_defs='-1'/g" "$remediate_script"
+    
+    chmod +x "$remediate_script"
+    log_success "Remediation script generated at: $remediate_script"
+    
+    log_info "Running CIS remediation script..."
+    if ! bash "$remediate_script" &>> "$LOG_FILE"; then
+        log_warning "Some remediation script rules may have failed"
+    fi
+    
+    log_success "OpenSCAP phase completed"
+}
+
+################################################################################
+# Phase 3: /tmp Partition Configuration
+################################################################################
+
+phase_tmp_partition() {
+    log_info "=== PHASE 3: /tmp PARTITION CONFIGURATION ==="
+    
+    # Backup fstab
+    backup_file /etc/fstab
+    
+    log_info "Mounting /tmp as tmpfs with security options..."
+    if ! mount -t tmpfs -o size=25%,defaults,rw,nosuid,nodev,noexec,relatime tmpfs /tmp 2>> "$LOG_FILE"; then
+        log_error "Failed to mount /tmp"
+        return 1
+    fi
+    log_success "/tmp mounted successfully"
+    
+    # Configure fstab for persistence
+    log_info "Configuring /etc/fstab for persistence..."
+    if ! grep -q "^tmpfs[[:space:]]*0[[:space:]]*\/tmp" /etc/fstab; then
+        echo "tmpfs 0 /tmp tmpfs defaults,rw,nosuid,nodev,noexec,relatime,size=25% 0 0" >> /etc/fstab
+        log_success "Entry added to /etc/fstab"
+    else
+        log_warning "/tmp is already configured in /etc/fstab"
+    fi
+    
+    log_success "/tmp configuration phase completed"
+}
+
+################################################################################
 # Help Functions
 ################################################################################
 
