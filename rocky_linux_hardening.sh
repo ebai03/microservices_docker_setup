@@ -153,6 +153,65 @@ phase_tmp_partition() {
 }
 
 ################################################################################
+# Phase 4: GRUB Configuration
+################################################################################
+
+phase_grub_password() {
+    log_info "=== PHASE 4: GRUB PASSWORD CONFIGURATION ==="
+    
+    log_info "Setting password for GRUB..."
+    # Note: grub2-setpassword is interactive, use with caution
+    # To automate, grub2-mkpasswd-pbkdf2 can be used
+    
+    read -sp "Enter password for GRUB (or press Enter to use default password): " grub_pass
+    echo
+    
+    if [[ -z "$grub_pass" ]]; then
+        log_warning "GRUB password configuration skipped"
+        return 0
+    fi
+    
+    # Generate password hash
+    local grub_hash=$(echo -e "$grub_pass\n$grub_pass" | grub2-mkpasswd-pbkdf2 | grep -oP 'grub.pbkdf2.sha512.10000.\K.*')
+    
+    backup_file /etc/grub.d/40_custom
+    
+    cat >> /etc/grub.d/40_custom << EOF
+set superusers="root"
+password_pbkdf2 root $grub_hash
+EOF
+    
+    chmod 600 /etc/grub.d/40_custom
+    
+    log_info "Regenerating GRUB configuration..."
+    grub2-mkconfig -o /boot/grub2/grub.cfg &>> "$LOG_FILE"
+    
+    log_success "GRUB password configured"
+}
+
+################################################################################
+# Phase 5: SELinux Configuration
+################################################################################
+
+phase_selinux() {
+    log_info "=== PHASE 5: SELINUX CONFIGURATION ==="
+    
+    backup_file /etc/selinux/config
+    
+    log_info "Installing libselinux..."
+    if ! dnf install -y libselinux &>> "$LOG_FILE"; then
+        log_warning "Failed to install libselinux"
+    fi
+    
+    log_info "Configuring SELinux to enforcing mode..."
+    sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config
+    
+    log_success "SELinux configured to enforcing mode"
+    log_warning "SELinux will enter enforcing mode on next reboot"
+}
+
+
+################################################################################
 # Help Functions
 ################################################################################
 
