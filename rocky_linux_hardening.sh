@@ -260,6 +260,90 @@ EOF
 }
 
 ################################################################################
+# Phase 7: Fail2ban Installation and Configuration
+################################################################################
+
+phase_fail2ban() {
+    log_info "=== PHASE 7: FAIL2BAN INSTALLATION AND CONFIGURATION ==="
+    
+    # Install EPEL if not available
+    log_info "Installing EPEL repository..."
+    if ! dnf install -y epel-release &>> "$LOG_FILE"; then
+        log_warning "Failed to install EPEL"
+    fi
+    
+    # Install Fail2ban
+    log_info "Installing Fail2ban..."
+    if ! dnf install -y fail2ban &>> "$LOG_FILE"; then
+        log_error "Failed to install Fail2ban"
+        return 1
+    fi
+    
+    backup_file /etc/fail2ban/jail.conf
+    
+    # Create local configuration
+    log_info "Configuring Fail2ban..."
+    
+    cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
+    
+    cat > /etc/fail2ban/jail.d/sshd.local << 'EOF'
+[sshd]
+enabled = true
+port = ssh
+logpath = %(sshd_log)s
+backend = %(sshd_backend)s
+maxretry = 5
+bantime = 10m
+bantime.factor = 2
+findtime = 10m
+EOF
+    
+    log_success "Fail2ban configuration created"
+    
+    # Enable and start service
+    systemctl enable fail2ban
+    systemctl start fail2ban
+    
+    log_success "Fail2ban enabled and started"
+}
+
+################################################################################
+# Phase 8: Firewall Configuration
+################################################################################
+
+phase_firewall() {
+    log_info "=== PHASE 8: FIREWALL CONFIGURATION ==="
+    
+    log_info "Installing firewalld..."
+    if ! dnf install -y firewalld &>> "$LOG_FILE"; then
+        log_error "Failed to install firewalld"
+        return 1
+    fi
+    
+    # Enable firewall
+    systemctl enable firewalld
+    systemctl start firewalld
+    
+    log_info "Configuring public zone as default..."
+    firewall-cmd --set-default-zone=public
+    
+    # Remove unnecessary services
+    log_info "Removing unnecessary services..."
+    firewall-cmd --zone=public --remove-service=cockpit || true
+    firewall-cmd --zone=public --remove-service=dhcpv6-client || true
+    
+    # Save changes permanently
+    firewall-cmd --runtime-to-permanent
+    
+    # Allow SSH
+    log_info "Allowing SSH traffic..."
+    firewall-cmd --permanent --add-service=ssh
+    firewall-cmd --reload
+    
+    log_success "Firewall configured correctly"
+}
+
+################################################################################
 # Help Functions
 ################################################################################
 
