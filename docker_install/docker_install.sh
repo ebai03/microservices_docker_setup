@@ -138,24 +138,75 @@ verify_docker_network() {
     fi
 }
 
-log_info "Installing upgrades that provide security patches or bugfixes"
-# Make any necessary upgrades
-dnf upgrade-minimal
+# Main execution
+main() {
+    log_info "=========================================="
+    log_info "Docker Upgrade Script Started"
+    log_info "User: $CURRENT_USER"
+    log_info "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
+    log_info "=========================================="
+    
+    check_root
+    
+    log_info "Installing upgrades that provide security patches or bugfixes"
+    dnf upgrade-minimal -y
+    
+    if [[ $? -ne 0 ]]; then
+        log_error "Failed to upgrade system packages"
+        exit 1
+    fi
+    
+    log_success "System upgrade completed"
+    
+    log_warning "Installing Docker packages"
+    dnf -y install dnf-plugins-core
+    
+    if [[ $? -ne 0 ]]; then
+        log_error "Failed to install dnf-plugins-core"
+        exit 1
+    fi
+    
+    log_info "Adding Docker CE repository..."
+    dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo
+    
+    if [[ $? -ne 0 ]]; then
+        log_error "Failed to add Docker repository"
+        exit 1
+    fi
+    
+    log_info "Installing Docker CE, CLI, containerd, buildx and compose..."
+    dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    
+    if [[ $? -ne 0 ]]; then
+        log_error "Failed to install Docker packages"
+        exit 1
+    fi
+    
+    log_success "Docker packages installed successfully"
+    echo ""
+    
+    log_warning "Verifying that docker daemon is not active"
+    check_docker_is_not_active
+    echo ""
+    
+    log_warning "Configuring Docker network BEFORE starting daemon"
+    configure_docker_network
+    echo ""
+    
+    verify_docker_config
+    echo ""
+    
+    start_docker_service
+    echo ""
+    
+    enable_docker_service
+    echo ""
+    
+    verify_docker_network
+    echo ""
+    
+    show_summary
+}
 
-echo ""
-log_warning "Installing docker"
-# Install docker https://docs.docker.com/engine/install/rhel/
-dnf -y install dnf-plugins-core
-dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo
-dnf install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-log_warning "Verifying that docker is not active"
-
-
-check_docker_is_not_active
-configure_docker_network
-
-verify_docker_config
-start_docker_service
-enable_docker_service
-verify_docker_network
+# Execute main function
+main
