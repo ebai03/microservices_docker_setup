@@ -45,3 +45,40 @@ check_root() {
         exit 1
     fi
 }
+
+
+check_rocky_linux() {
+    if ! grep -q "Rocky Linux" /etc/rocky-release; then
+        log_error "This script is designed for Rocky Linux"
+        exit 1
+    fi
+    log_success "Operating system verified: $(cat /etc/rocky-release)"
+}
+
+backup_file() {
+    local file="$1"
+    if [[ -f "$file" ]]; then
+        cp -p "$file" "${BACKUP_DIR}$(dirname $file)/"
+        log_info "Backup created: $file"
+    fi
+}
+
+################################################################################
+# Phase 1: Preparation
+################################################################################
+
+phase_preparation() {
+    log_info "=== PHASE 1: PREPARATION ==="
+    
+    mkdir -p "$BACKUP_DIR"
+    log_success "Backup directory created: $BACKUP_DIR"
+    
+    # Create backup structure
+    mkdir -p "${BACKUP_DIR}/etc/ssh"
+    mkdir -p "${BACKUP_DIR}/etc/dnf"
+    mkdir -p "${BACKUP_DIR}/etc/selinux"
+    mkdir -p "${BACKUP_DIR}/etc/fail2ban"
+    
+    log_success "Preparation phase completed"
+}
+
