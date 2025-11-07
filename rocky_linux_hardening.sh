@@ -344,6 +344,56 @@ phase_firewall() {
 }
 
 ################################################################################
+# Phase 9: Automatic Updates Configuration
+################################################################################
+
+phase_automatic_updates() {
+    log_info "=== PHASE 9: AUTOMATIC UPDATES CONFIGURATION ==="
+    
+    log_info "Installing dnf-automatic..."
+    if ! dnf install -y dnf-automatic &>> "$LOG_FILE"; then
+        log_error "Failed to install dnf-automatic"
+        return 1
+    fi
+    
+    backup_file /etc/dnf/automatic.conf
+    
+    # Configure only security updates
+    log_info "Configuring dnf-automatic for security patches only..."
+    sed -i 's/upgrade_type = .*/upgrade_type = security/' /etc/dnf/automatic.conf
+    sed -i 's/apply_updates = .*/apply_updates = yes/' /etc/dnf/automatic.conf
+    
+    # Enable timer
+    systemctl enable dnf-automatic-install.timer
+    systemctl start dnf-automatic-install.timer
+    
+    log_success "Automatic security updates configured"
+}
+
+################################################################################
+# Phase 10: Verification and Reports
+################################################################################
+
+phase_verification() {
+    log_info "=== PHASE 10: VERIFICATION AND REPORTS ==="
+    
+    log_info "Generating CIS verification report..."
+    
+    local report_file="${BACKUP_DIR}/cis-verification-report.html"
+    
+    if oscap xccdf eval \
+        --profile xccdf_org.ssgproject.content_profile_cis_server_l1 \
+        --report "$report_file" \
+        /usr/share/xml/scap/ssg/content/ssg-rl9-ds.xml &>> "$LOG_FILE"; then
+        log_success "Verification report generated: $report_file"
+    else
+        log_warning "Failed to generate verification report"
+    fi
+    
+    log_success "Verification phase completed"
+}
+
+################################################################################
 # Help Functions
 ################################################################################
 
@@ -502,3 +552,5 @@ main() {
     log_warning "IMPORTANT: It is recommended to reboot the system to apply all changes"
     log_warning "Especially SELinux which requires reboot to enter enforcing mode"
 }
+
+main "$@"
