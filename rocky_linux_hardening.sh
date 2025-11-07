@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 
 # Variables
 LOG_FILE="/var/log/hardening-$(date +%Y%m%d-%H%M%S).log"
-BACKUP_DIR="/root/hardening-backup-$(date +%Y%m%d-%H%M%S)"
+BACKUP_DIR="/root/hardening-backup-$(date +%Y%m%d)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 ################################################################################
