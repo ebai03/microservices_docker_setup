@@ -284,6 +284,13 @@ Available phases:
     7  - fail2ban          (Fail2ban installation)
     8  - firewall          (Firewall configuration)
     9  - updates           (Automatic updates)
+    10 - verification      (Final verification)
+
+Examples:
+    $0                              # Run all phases
+    $0 --phase 6                    # Only configure SSH
+    $0 --full                       # Run all phases explicitly
+
 EOF
 }
 
@@ -300,6 +307,8 @@ Available hardening phases:
 7.  Fail2ban: Protection against brute force attacks
 8.  Firewall: firewalld configuration
 9.  Updates: Configure automatic security patches
+10. Verification: Generate final CIS report
+
 EOF
 }
 
@@ -390,6 +399,9 @@ main() {
             ;;
         9|updates)
             phase_automatic_updates
+            ;;
+        10|verification)
+            phase_verification
             ;;
         *)
             log_error "Unknown phase: $phase_to_run"
