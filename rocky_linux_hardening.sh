@@ -210,6 +210,54 @@ phase_selinux() {
     log_warning "SELinux will enter enforcing mode on next reboot"
 }
 
+################################################################################
+# Phase 6: SSH Hardening Configuration
+################################################################################
+
+phase_ssh_hardening() {
+    log_info "=== PHASE 6: SSH HARDENING CONFIGURATION ==="
+    
+    backup_file /etc/ssh/sshd_config
+    
+    log_info "Applying SSH security configurations..."
+    
+    # Check public key authentication configuration
+    if ! grep -q "^PubkeyAuthentication" /etc/ssh/sshd_config; then
+        echo "PubkeyAuthentication yes" >> /etc/ssh/sshd_config
+    else
+        sed -i 's/^#PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+    fi
+    
+    # Check authorized keys file
+    if ! grep -q "^AuthorizedKeysFile" /etc/ssh/sshd_config; then
+        echo "AuthorizedKeysFile .ssh/authorized_keys" >> /etc/ssh/sshd_config
+    fi
+    
+    # Additional security configurations recommended by CIS
+    cat >> /etc/ssh/sshd_config << 'EOF'
+
+# CIS security configurations
+PermitRootLogin no
+PermitEmptyPasswords no
+HostbasedAuthentication no
+IgnoreRhosts yes
+MaxAuthTries 5
+ClientAliveInterval 300
+ClientAliveCountMax 2
+EOF
+    
+    # Validate sshd_config syntax
+    if sshd -t &>> "$LOG_FILE"; then
+        log_success "SSH configuration validated"
+        systemctl restart sshd
+        log_success "SSH service restarted"
+    else
+        log_error "SSH configuration error"
+        return 1
+    fi
+    
+    log_success "SSH hardening phase completed"
+}
 
 ################################################################################
 # Help Functions
