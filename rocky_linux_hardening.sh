@@ -82,3 +82,46 @@ phase_preparation() {
     log_success "Preparation phase completed"
 }
 
+################################################################################
+# Help Functions
+################################################################################
+
+show_usage() {
+    cat << EOF
+Usage: $0 [OPTION]
+
+Options:
+    -h, --help              Show this help message
+    -f, --full              Run all phases (default)
+    -p, --phase PHASE       Run only a specific phase
+    -l, --list-phases       List all available phases
+    -b, --backup-dir DIR    Specify backup directory
+    
+Available phases:
+    1  - preparation        (Initial preparation)
+    2  - openscap          (OpenSCAP installation and CIS Benchmark)
+    3  - tmp-partition     (/tmp configuration)
+    4  - grub              (GRUB password)
+    5  - selinux           (SELinux configuration)
+    6  - ssh               (SSH hardening)
+    7  - fail2ban          (Fail2ban installation)
+    8  - firewall          (Firewall configuration)
+    9  - updates           (Automatic updates)
+EOF
+}
+
+list_phases() {
+    cat << EOF
+Available hardening phases:
+
+1.  Preparation: Create backup directories and validate system
+2.  OpenSCAP: Install tools and apply CIS Server L1 profile
+3.  /tmp: Configure separate partition with security options
+4.  GRUB: Set password on bootloader
+5.  SELinux: Configure to enforcing mode
+6.  SSH: Hardening configuration and public key authentication
+7.  Fail2ban: Protection against brute force attacks
+8.  Firewall: firewalld configuration
+9.  Updates: Configure automatic security patches
+EOF
+}
