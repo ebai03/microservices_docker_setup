@@ -87,6 +87,57 @@ verify_docker_config() {
     log_success "Docker configuration is valid"
 }
 
+start_docker_service() {
+    log_info "Starting Docker service..."
+    
+    systemctl daemon-reload
+    systemctl start docker
+    
+    if systemctl is-active --quiet docker; then
+        log_success "Docker service started successfully"
+    else
+        log_error "Failed to start Docker service"
+        exit 1
+    fi
+}
+
+enable_docker_service() {
+    log_info "Enabling Docker service on boot..."
+    
+    systemctl enable docker
+    
+    if systemctl is-enabled --quiet docker; then
+        log_success "Docker service enabled on boot"
+    else
+        log_error "Failed to enable Docker service"
+        exit 1
+    fi
+}
+
+verify_docker_network() {
+    log_info "Verifying Docker network configuration..."
+    
+    sleep 2  # Give Docker time to initialize
+    
+    # Get the docker0 bridge IP
+    DOCKER_IP=$(ip addr show docker0 2>/dev/null | grep "inet " | awk '{print $2}')
+    
+    if [[ -z "$DOCKER_IP" ]]; then
+        log_warning "docker0 interface not found (might be normal if no containers are running)"
+    else
+        log_success "Docker bridge (docker0) configured with: $DOCKER_IP"
+    fi
+    
+    # Show network inspection
+    docker network inspect bridge > /tmp/docker_network.txt 2>&1
+    if [[ $? -eq 0 ]]; then
+        log_success "Docker network inspection successful"
+        cat /tmp/docker_network.txt | tee -a "$LOG_FILE"
+    else
+        log_warning "Could not inspect Docker network"
+    fi
+}
+
 log_info "Installing upgrades that provide security patches or bugfixes"
 # Make any necessary upgrades
 dnf upgrade-minimal
@@ -102,6 +153,9 @@ log_warning "Verifying that docker is not active"
 
 
 check_docker_is_not_active
+configure_docker_network
 
-# Configure IP range BEFORE initializing docker
-sudo mkdir -p /etc/docker
+verify_docker_config
+start_docker_service
+enable_docker_service
+verify_docker_network
