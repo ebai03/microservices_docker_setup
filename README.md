@@ -25,6 +25,14 @@ su newadminuser
 
 ## Scripts Overview
 
+Before executing any scripts, ensure they have executable permissions:
+
+```bash
+chmod +x scripts/rocky_linux_hardening.sh
+chmod +x scripts/docker_install_.sh
+```
+The repository includes the following scripts:
+
 - `rocky_linux_hardening.sh`: Automates the hardening of Rocky Linux 9.3 based on CIS Benchmark 2.0 recommendations.
 - `docker_install_.sh`: Installs Docker with enhanced security configurations.
 

@@ -15,8 +15,9 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Variables
-LOG_FILE="/var/log/hardening-$(date +%Y%m%d-%H%M%S).log"
-BACKUP_DIR="/root/hardening-backup-$(date +%Y%m%d)"
+ROOT_DIR="/home/$USER/hardening-$(date +%Y%m%d)"
+LOG_FILE="$ROOT_DIR/log"
+BACKUP_DIR="$ROOT_DIR/backup"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 ################################################################################
@@ -70,6 +71,8 @@ backup_file() {
 phase_preparation() {
     log_info "=== PHASE 1: PREPARATION ==="
     
+    mkdir -p "$ROOT_DIR"
+
     mkdir -p "$BACKUP_DIR"
     log_success "Backup directory created: $BACKUP_DIR"
     
