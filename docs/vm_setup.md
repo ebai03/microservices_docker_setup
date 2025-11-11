@@ -7,15 +7,15 @@ In order to make this process as close to the real infrastructure as possible, t
 ## Creating the VM
 We can configure a VM in VMWare Workstation or VirtualBox to use LVM with the GUI setup program. As reference these are the necessary physical volumes, volume groups and logical volumes:
 
-![lvm_template](./imgs/image2.png)
+![lvm_template](./imgs/vm_setup/image2.png)
 
 After setting up the language, keyboard, and network, we can proceed to the disk configuration, for this we can use the "Custom" option inside the disk configuration menu:
 
-![lvm_custom_disk](./imgs/image1.png)
+![lvm_custom_disk](./imgs/vm_setup/image1.png)
 
 We will use LVM with the following layout:
 
-![lvm_setup](./imgs/image3.png)
+![lvm_setup](./imgs/vm_setup/image3.png)
 
 - `/boot`: 1 GB as a standard partition.
 - `swap`: 2 GB as an LVM logical volume with xfs.
@@ -26,7 +26,7 @@ It is important to set `/boot` as a standard partition, otherwise the bootloader
 
 This is the final layout of the VM once the installation is complete:
 
-![lvm_final](./imgs/image4.png)
+![lvm_final](./imgs/vm_setup/image4.png)
 
 The biggest difference is the size of the `/` and `/home` partitions, which can be adjusted later if needed.
 
