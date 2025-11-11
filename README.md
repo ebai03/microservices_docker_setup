@@ -21,8 +21,6 @@ After creating the user, switch to it for the rest of the setup process:
 su newadminuser
 ```
 
-
-
 ## Scripts Overview
 
 Before executing any scripts, ensure they have executable permissions:

@@ -80,6 +80,17 @@ phase_preparation() {
     mkdir -p "${BACKUP_DIR}/etc/selinux"
     mkdir -p "${BACKUP_DIR}/etc/fail2ban"
     
+    
+    log_info "Installing upgrades that provide security patches or bugfixes"
+    dnf upgrade-minimal -y --nobest
+
+    if [[ $? -ne 0 ]]; then
+        log_error "Failed to upgrade system packages"
+        exit 1
+    fi
+    
+    log_success "System upgrade completed"
+
     log_success "Preparation phase completed"
 }
 

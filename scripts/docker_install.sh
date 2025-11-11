@@ -177,16 +177,6 @@ main() {
     
     check_root
     
-    log_info "Installing upgrades that provide security patches or bugfixes"
-    dnf upgrade-minimal -y
-    
-    if [[ $? -ne 0 ]]; then
-        log_error "Failed to upgrade system packages"
-        exit 1
-    fi
-    
-    log_success "System upgrade completed"
-    
     log_warning "Installing Docker packages"
     dnf -y install dnf-plugins-core
     
@@ -236,9 +226,12 @@ main() {
     
     read -p "Do you want to create a new docker user group and add the current user to it? (Write Y to confirm): " confirm
     
-    if [[ "$confirm" = "Y" ]] then
+    if [[ "$confirm" = "Y" ]]; then
         create_user_group
+    else
+        log_warning "Docker user group not created"
     fi
+    log_success "Installation completed"
 }
 
 # Execute main function
