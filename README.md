@@ -2,6 +2,27 @@
 
 This repository contains scripts and documentation for setting up a secure Docker environment on Rocky Linux 9.3, including OS hardening based on CIS benchmarks and Docker installation.
 
+## Before You Begin
+
+Ensure you have a Rocky Linux 9.3 VM set up according to the specifications outlined in the [VM Setup Guide](./docs/vm_setup.md). This guide provides detailed instructions on creating a VM that closely resembles the target environment in the NAC (Nube Academica Institucional).
+
+Also, add a new user with sudo privileges to avoid running commands as root directly:
+
+```bash
+# Before any hardening or Docker installation
+sudo useradd -m -s /bin/bash -G wheel newadminuser
+sudo passwd newadminuser
+# Test sudo access before proceeding
+```
+
+After creating the user, switch to it for the rest of the setup process:
+
+```bash
+su newadminuser
+```
+
+
+
 ## Scripts Overview
 
 - `rocky_linux_hardening.sh`: Automates the hardening of Rocky Linux 9.3 based on CIS Benchmark 2.0 recommendations.

@@ -203,11 +203,11 @@ phase_selinux() {
         log_warning "Failed to install libselinux"
     fi
     
-    log_info "Configuring SELinux to enforcing mode..."
-    sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config
+    log_info "Configuring SELinux to permissive mode..."
+    sed -i 's/^SELINUX=.*/SELINUX=permissive/' /etc/selinux/config
     
-    log_success "SELinux configured to enforcing mode"
-    log_warning "SELinux will enter enforcing mode on next reboot"
+    log_success "SELinux configured to permissive mode, you can change this by editing the file /etc/selinux/config"
+    log_warning "SELinux will enter permissive mode on next reboot"
 }
 
 ################################################################################
@@ -441,7 +441,7 @@ Available hardening phases:
 2.  OpenSCAP: Install tools and apply CIS Server L1 profile
 3.  /tmp: Configure separate partition with security options
 4.  GRUB: Set password on bootloader
-5.  SELinux: Configure to enforcing mode
+5.  SELinux: Configure to permissive mode
 6.  SSH: Hardening configuration and public key authentication
 7.  Fail2ban: Protection against brute force attacks
 8.  Firewall: firewalld configuration
@@ -555,7 +555,6 @@ main() {
     
     echo
     log_warning "IMPORTANT: It is recommended to reboot the system to apply all changes"
-    log_warning "Especially SELinux which requires reboot to enter enforcing mode"
 }
 
 main "$@"
