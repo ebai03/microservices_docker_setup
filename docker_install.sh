@@ -139,6 +139,34 @@ verify_docker_network() {
     fi
 }
 
+# Creates docker user group
+create_user_group() {
+    check_root
+    
+    log_info "Creating docker group"
+    groupadd docker
+
+    if [[ $? -ne 0 ]]; then
+        log_error "Failed to create docker group"
+        exit 1
+    fi
+
+    if [[ $CURRENT_USER = "root" && $EUID -eq 0 ]]; then
+        log_error "Can't add root to docker group (bad practice)"
+        exit 1
+    fi
+
+    usermod -aG docker $CURRENT_USER
+    if [[ $? -ne 0 ]]; then
+        log_error "Failed to add current user to docker group"
+        exit 1
+    else
+        log_success "Added current user: $CURRENT_USER to docker group"
+        log_info "Please reboot the system after the script finishes"
+        log_info "You can check the changes by running (whithout sudo): docker run hello-world"
+    fi
+}
+
 # Main execution
 main() {
     log_info "=========================================="
@@ -206,6 +234,11 @@ main() {
     verify_docker_network
     echo ""
     
+    read -p "Do you want to create a new docker user group and add the current user to it? (Write Y to confirm): " confirm
+    
+    if [[ "$confirm" = "Y" ]] then
+        create_user_group
+    fi
 }
 
 # Execute main function
