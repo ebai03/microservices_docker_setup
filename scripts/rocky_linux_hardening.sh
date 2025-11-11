@@ -15,7 +15,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Variables
-ROOT_DIR="/home/$USER/hardening-$(date +%Y%m%d)"
+ROOT_DIR="/home/${SUDO_USER:-$(whoami)}/hardening-$(date +%Y%m%d)"
 LOG_FILE="$ROOT_DIR/log"
 BACKUP_DIR="$ROOT_DIR/backup"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -70,8 +70,6 @@ backup_file() {
 
 phase_preparation() {
     log_info "=== PHASE 1: PREPARATION ==="
-    
-    mkdir -p "$ROOT_DIR"
 
     mkdir -p "$BACKUP_DIR"
     log_success "Backup directory created: $BACKUP_DIR"
@@ -491,7 +489,10 @@ main() {
                 ;;
         esac
     done
-    
+
+    mkdir -p "$ROOT_DIR"
+    log_info "Created root directory $ROOT_DIR"
+
     # Initial checks
     check_root
     check_rocky_linux

@@ -10,7 +10,7 @@ Also, add a new user with sudo privileges to avoid running commands as root dire
 
 ```bash
 # Before any hardening or Docker installation
-sudo useradd -m -s /bin/bash -G wheel newadminuser
+sudo useradd -m -G wheel newadminuser
 sudo passwd newadminuser
 # Test sudo access before proceeding
 ```
