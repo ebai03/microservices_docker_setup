@@ -2,7 +2,7 @@
 
 ################################################################################
 # Hardening Script for Rocky Linux 9.3 based on CIS Benchmark 2.0
-# This script automates security recommendations from the report "Operating System Hardening (Server).md"
+# This script automates security recommendations from the report "OS_hardening.md"
 ################################################################################
 
 set -euo pipefail
