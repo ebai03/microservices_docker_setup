@@ -139,34 +139,6 @@ verify_docker_network() {
     fi
 }
 
-# Creates docker user group
-create_user_group() {
-    check_root
-    
-    log_info "Creating docker group"
-    groupadd docker
-
-    if [[ $? -ne 0 ]]; then
-        log_error "Failed to create docker group"
-        exit 1
-    fi
-
-    if [[ $CURRENT_USER = "root" && $EUID -eq 0 ]]; then
-        log_error "Can't add root to docker group (bad practice)"
-        exit 1
-    fi
-
-    usermod -aG docker $CURRENT_USER
-    if [[ $? -ne 0 ]]; then
-        log_error "Failed to add current user to docker group"
-        exit 1
-    else
-        log_success "Added current user: $CURRENT_USER to docker group"
-        log_info "Please reboot the system after the script finishes"
-        log_info "You can check the changes by running (whithout sudo): docker run hello-world"
-    fi
-}
-
 # Main execution
 main() {
     log_info "=========================================="
@@ -194,8 +166,8 @@ main() {
     fi
     
     log_info "Installing Docker CE, CLI, containerd, buildx and compose..."
-    dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-    
+    dnf install -y docker-ce-28.5.* docker-ce-cli-28.5.* containerd.io docker-buildx-plugin docker-compose-plugin
+
     if [[ $? -ne 0 ]]; then
         log_error "Failed to install Docker packages"
         exit 1
@@ -224,13 +196,6 @@ main() {
     verify_docker_network
     echo ""
     
-    read -p "Do you want to create a new docker user group and add the current user to it? (Write Y to confirm): " confirm
-    
-    if [[ "$confirm" = "Y" ]]; then
-        create_user_group
-    else
-        log_warning "Docker user group not created"
-    fi
     log_success "Installation completed"
 }
 
