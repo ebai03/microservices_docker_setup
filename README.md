@@ -52,10 +52,10 @@ git clone https://github.com/docker/docker-bench-security.git
 cd docker-bench-security
 
 # Basic execution
-sudo ./docker-bench.sh
+sudo ./docker-bench-security.sh
 
 # With report to file
-sudo ./docker-bench.sh -l /tmp/docker-bench-report.txt
+sudo ./docker-bench-security.sh -l /tmp/docker-bench-report.txt
 
 # Or inside a container (without direct access to the daemon)
 docker run --rm --net host --pid host --userns host \
