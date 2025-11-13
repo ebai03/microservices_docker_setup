@@ -191,6 +191,8 @@ phase_grub_password() {
     # Generate password hash
     local grub_hash=$(echo -e "$grub_pass\n$grub_pass" | grub2-mkpasswd-pbkdf2 | grep -oP 'grub.pbkdf2.sha512.10000.\K.*')
     
+    mkdir -p "${BACKUP_DIR}/etc/grub.d"
+
     backup_file /etc/grub.d/40_custom
     
     cat >> /etc/grub.d/40_custom << EOF
@@ -246,10 +248,9 @@ phase_banner_hardening() {
     # Remove OS information from banners
     log_info "Configuring /etc/issue banner..."
     cat > /etc/issue << 'EOF'
-Windows Server 2019 Standard
-Microsoft Corporation
+FreeBSD 13.2-RELEASE (GENERIC)
 
-Login:
+Console login:
 EOF
     # Same content for network banner
     cp /etc/issue /etc/issue.net
