@@ -253,9 +253,12 @@ Login:
 EOF
     # Same content for network banner
     cp /etc/issue /etc/issue.net
+
+    # Remove cockpit-related MOTD generators
+    rm -f /etc/motd.d/cockpit 2>/dev/null || true
     
-    # Clear or customize MOTD (Message of the Day)
-    log_info "Clearing MOTD..."
+    # Customize MOTD (Message of the Day)
+    log_info "Customizing MOTD..."
    cat > /etc/motd << 'EOF'
 
            __..--''``---....___   _..._    __
