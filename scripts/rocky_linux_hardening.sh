@@ -56,6 +56,11 @@ check_rocky_linux() {
     log_success "Operating system verified: $(cat /etc/rocky-release)"
 }
 
+backup_dir_structure() {
+    mkdir -p "$BACKUP_DIR"
+    log_success "Backup directory created: $BACKUP_DIR"
+}
+
 backup_file() {
     local file="$1"
     if [[ -f "$file" ]]; then
@@ -71,16 +76,16 @@ backup_file() {
 phase_preparation() {
     log_info "=== PHASE 1: PREPARATION ==="
 
-    mkdir -p "$BACKUP_DIR"
-    log_success "Backup directory created: $BACKUP_DIR"
-    
+    backup_dir_structure
+
+    mkdir -p "${BACKUP_DIR}/etc"
+
     # Create backup structure
     mkdir -p "${BACKUP_DIR}/etc/ssh"
     mkdir -p "${BACKUP_DIR}/etc/dnf"
     mkdir -p "${BACKUP_DIR}/etc/selinux"
     mkdir -p "${BACKUP_DIR}/etc/fail2ban"
-    
-    
+
     log_info "Installing upgrades that provide security patches or bugfixes"
     dnf upgrade-minimal -y --nobest
 
@@ -222,12 +227,66 @@ phase_selinux() {
     log_warning "SELinux will enter permissive mode on next reboot"
 }
 
+
 ################################################################################
-# Phase 6: SSH Hardening Configuration
+# Phase 6: System Banner Hardening
+################################################################################
+
+phase_banner_hardening() {
+    log_info "=== PHASE 6: SYSTEM BANNER HARDENING ==="
+    
+    backup_dir_structure
+
+    mkdir -p "${BACKUP_DIR}/etc"
+
+    backup_file /etc/issue
+    backup_file /etc/issue.net
+    backup_file /etc/motd
+    
+    # Remove OS information from banners
+    log_info "Configuring /etc/issue banner..."
+    cat > /etc/issue << 'EOF'
+Windows Server 2019 Standard
+Microsoft Corporation
+
+Login:
+EOF
+    # Same content for network banner
+    cp /etc/issue /etc/issue.net
+    
+    # Clear or customize MOTD (Message of the Day)
+    log_info "Clearing MOTD..."
+   cat > /etc/motd << 'EOF'
+
+           __..--''``---....___   _..._    __
+ /// //_.-'    .-/";  `        ``<._  ``.''_ `. / // /
+///_.-' _..--.'_    \                    `( ) ) // //
+/ (_..-' // (< _     ;_..__               ; `' / ///
+ / // // //  `-._,_)' // / ``--...____..-' /// / //
+
+EOF
+
+    # Remove OS info from SSH banner if exists
+    if [[ -f /etc/ssh/sshd_banner ]]; then
+        backup_file /etc/ssh/sshd_banner
+        cp /etc/issue /etc/ssh/sshd_banner
+    fi
+    
+    # Set proper permissions
+    chmod 644 /etc/issue
+    chmod 644 /etc/issue.net
+    chmod 644 /etc/motd
+    
+    log_success "System banners configured according to security policy"
+}
+
+
+################################################################################
+# Phase 7: SSH Hardening Configuration
 ################################################################################
 
 phase_ssh_hardening() {
-    log_info "=== PHASE 6: SSH HARDENING CONFIGURATION ==="
+    log_info "=== PHASE 7: SSH HARDENING CONFIGURATION ==="
     
     backup_file /etc/ssh/sshd_config
     
@@ -277,11 +336,11 @@ EOF
 }
 
 ################################################################################
-# Phase 7: Fail2ban Installation and Configuration
+# Phase 8: Fail2ban Installation and Configuration
 ################################################################################
 
 phase_fail2ban() {
-    log_info "=== PHASE 7: FAIL2BAN INSTALLATION AND CONFIGURATION ==="
+    log_info "=== PHASE 8: FAIL2BAN INSTALLATION AND CONFIGURATION ==="
     
     # Install EPEL if not available
     log_info "Installing EPEL repository..."
@@ -325,11 +384,11 @@ EOF
 }
 
 ################################################################################
-# Phase 8: Firewall Configuration
+# Phase 9: Firewall Configuration
 ################################################################################
 
 phase_firewall() {
-    log_info "=== PHASE 8: FIREWALL CONFIGURATION ==="
+    log_info "=== PHASE 9: FIREWALL CONFIGURATION ==="
     
     log_info "Installing firewalld..."
     if ! dnf install -y firewalld &>> "$LOG_FILE"; then
@@ -361,11 +420,11 @@ phase_firewall() {
 }
 
 ################################################################################
-# Phase 9: Automatic Updates Configuration
+# Phase 10: Automatic Updates Configuration
 ################################################################################
 
 phase_automatic_updates() {
-    log_info "=== PHASE 9: AUTOMATIC UPDATES CONFIGURATION ==="
+    log_info "=== PHASE 10: AUTOMATIC UPDATES CONFIGURATION ==="
     
     log_info "Installing dnf-automatic..."
     if ! dnf install -y dnf-automatic &>> "$LOG_FILE"; then
@@ -388,11 +447,11 @@ phase_automatic_updates() {
 }
 
 ################################################################################
-# Phase 10: Verification and Reports
+# Phase 11: Verification and Reports
 ################################################################################
 
 phase_verification() {
-    log_info "=== PHASE 10: VERIFICATION AND REPORTS ==="
+    log_info "=== PHASE 11: VERIFICATION AND REPORTS ==="
     
     log_info "Generating CIS verification report..."
     
@@ -431,11 +490,12 @@ Available phases:
     3  - tmp-partition     (/tmp configuration)
     4  - grub              (GRUB password)
     5  - selinux           (SELinux configuration)
-    6  - ssh               (SSH hardening)
-    7  - fail2ban          (Fail2ban installation)
-    8  - firewall          (Firewall configuration)
-    9  - updates           (Automatic updates)
-    10 - verification      (Final verification)
+    6  - banner            (System banner hardening)
+    7  - ssh               (SSH hardening)
+    8  - fail2ban          (Fail2ban installation)
+    9  - firewall          (Firewall configuration)
+    10 - updates           (Automatic updates)
+    11 - verification      (Final verification)
 
 Examples:
     $0                              # Run all phases
@@ -454,11 +514,12 @@ Available hardening phases:
 3.  /tmp: Configure separate partition with security options
 4.  GRUB: Set password on bootloader
 5.  SELinux: Configure to permissive mode
-6.  SSH: Hardening configuration and public key authentication
-7.  Fail2ban: Protection against brute force attacks
-8.  Firewall: firewalld configuration
-9.  Updates: Configure automatic security patches
-10. Verification: Generate final CIS report
+6.  Banner: System banner hardening
+7.  SSH: Hardening configuration and public key authentication
+8.  Fail2ban: Protection against brute force attacks
+9.  Firewall: firewalld configuration
+10. Updates: Configure automatic security patches
+11. Verification: Generate final CIS report
 
 EOF
 }
@@ -542,19 +603,22 @@ main() {
         5|selinux)
             phase_selinux
             ;;
-        6|ssh)
+        6|banner)
+            phase_banner_hardening
+            ;;
+        7|ssh)
             phase_ssh_hardening
             ;;
-        7|fail2ban)
+        8|fail2ban)
             phase_fail2ban
             ;;
-        8|firewall)
+        9|firewall)
             phase_firewall
             ;;
-        9|updates)
+        10|updates)
             phase_automatic_updates
             ;;
-        10|verification)
+        11|verification)
             phase_verification
             ;;
         *)
