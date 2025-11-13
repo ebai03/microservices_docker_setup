@@ -6,6 +6,8 @@ The CIS Benchmark 2.0 for Redhat Enterprise Linux 9 will be used as a reference 
 
 The benchmarks from CIS align with popular frameworks such as the NIST Cybersecurity Framework, HIPAA, PCI-DSS, and the ISO 27000 family (Dharap, n.d.)
 
+In this case, the profile selected within the CIS Benchmark for Redhat Enterprise Linux 9 is the **CIS Server Level 1** profile, which includes a set of security configurations that are considered essential for protecting servers against common threats (NCP - Checklist CIS Red Hat Enterprise Linux 9 Benchmark, n.d.).
+
 To implement the security profile, the following steps will be taken:
 
 - Root user: It is advisable to use it only as a last resort when necessary; some tools behave unexpectedly if we only use sudo.
@@ -15,7 +17,24 @@ Be careful with how sudo is used:
 - sudo command runs only that command as root.  
 - sudo -i starts an interactive shell as root.  
 
-Apply the principle of least privilege (PoLP) is a security concept that states that a user, application, or system should only have access to the resources and permissions it needs to perform its specific task, and nothing more. In other words, the lowest possible level of access is granted to minimize risk in case of a security breach. 
+Apply the principle of least privilege (PoLP) is a security concept that states that a user, application, or system should only have access to the resources and permissions it needs to perform its specific task, and nothing more. In other words, the lowest possible level of access is granted to minimize risk in case of a security breach.
+
+Some of the configurations that are recommended within this profile are:
+- Removal of unnecessary file systems like: cramfs, freevxfs, hfs, hfsplus, jffs2.
+- Disabling unused kernel modules such as: usb-storage, afs, ceph, cifs, exfat, ext, fat, fscache, fuse, gfs2, nfs_common, nfsd, smbfs_common.
+- Mounting /tmp in a separate partition with nodev, nosuid, and noexec options.
+- Ensure /dev/shm is a separate partition with nodev, nosuid, and noexec options.
+- Ensure nodev, nosuid options are set on /home, /var, /var/tmp, /var/log, /var/log/audit partitions.
+- Ensure GPG keys are configured.
+- Ensure SELinux is installed.
+- Ensure MCS Translation Service, SETroubleshoot are not installed.
+- Set a bootloader password, with access to boot options restricted to authorized users.
+- Ensure address space layout randomization (ASLR) is enabled.
+- Restrict ptrace_scope.
+- Ensure core dump backtraces and storage are disabled.
+- Ensure system-wide crypto policies are not set in sshd configuration nad disable sha1, macs (`<128 bits`), cbc, chacha20-poly1305, EtM.
+- Disable XDMCP.
+- Etc.
 
 ### Password policies
 Due to the access and control that root and administrator accounts have, it is necessary to establish policies to regulate and maintain an acceptable level of protection for each one. Within the benchmark document, section 5.3.3.1 "Configure pam_faillock module" is relevant, where regulations can be found regarding the maximum number of failed authentication attempts, minimum password length, and other considerations for a password to be "strong".
