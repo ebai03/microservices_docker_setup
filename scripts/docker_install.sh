@@ -44,13 +44,12 @@ configure_docker_network() {
     mkdir -p /etc/docker
     
     # Create daemon.json with custom network configuration
-    # Using 10.10.0.0/16 to avoid conflicts with 172.24.x.x networks
+    # Using 10.10.0.0/24 to avoid conflicts with 172.24.x.x networks
     cat > /etc/docker/daemon.json <<'EOF'
 {
-  "bip": "10.10.0.1/16",
-  "fixed-cidr": "10.10.0.0/16",
+  "bip": "10.10.0.1/24",
+  "fixed-cidr": "10.10.0.0/24",
   "storage-driver": "overlay2",
-  "log-driver": "json-file",
   "log-opts": {
     "max-size": "10m",
     "max-file": "3"
@@ -61,8 +60,8 @@ EOF
     if [[ $? -eq 0 ]]; then
         log_success "Docker daemon.json created successfully"
         log_info "Docker network configuration:"
-        log_info "  - Bridge IP (bip): 10.10.0.1/16"
-        log_info "  - CIDR range: 10.10.0.0/16"
+        log_info "  - Bridge IP (bip): 10.10.0.1/24"
+        log_info "  - CIDR range: 10.10.0.0/24"
         log_info "  - Storage driver: overlay2"
         cat /etc/docker/daemon.json | tee -a "$LOG_FILE"
     else
