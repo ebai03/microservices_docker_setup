@@ -53,7 +53,18 @@ check_ubuntu() {
         log_error "This script is designed for Ubuntu"
         exit 1
     fi
-    log_success "Operating system verified: $(cat /etc/os-release)"
+    
+    local version=$(grep VERSION_ID /etc/os-release | cut -d'"' -f2)
+    log_success "Operating system verified: Ubuntu $version"
+    
+    if [[ "$version" != "24.04" ]]; then
+        log_warning "This script is optimized for Ubuntu 24.04 LTS, detected:  $version"
+        read -p "Do you want to continue?  (y/n): " -n 1 -r
+        echo
+        if [[ !  $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    fi
 }
 
 backup_dir_structure() {
