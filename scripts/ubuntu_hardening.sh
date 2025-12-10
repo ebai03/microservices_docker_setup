@@ -464,39 +464,44 @@ EOF
 }
 
 ################################################################################
-# Phase 9: Firewall Configuration
+# Phase 9: Firewall Configuration (UFW)
 ################################################################################
 
 phase_firewall() {
     log_info "=== PHASE 9: FIREWALL CONFIGURATION ==="
     
-    log_info "Installing firewalld..."
-    if ! dnf install -y firewalld &>> "$LOG_FILE"; then
-        log_error "Failed to install firewalld"
+    log_info "Installing UFW..."
+    if ! apt install -y ufw &>> "$LOG_FILE"; then
+        log_error "Failed to install UFW"
         return 1
     fi
     
-    # Enable firewall
-    systemctl enable firewalld
-    systemctl start firewalld
+        log_info "Configuring UFW rules..."
     
-    log_info "Configuring public zone as default..."
-    firewall-cmd --set-default-zone=public
+    # Reset UFW to default
+    ufw --force reset
     
-    # Remove unnecessary services
-    log_info "Removing unnecessary services..."
-    firewall-cmd --zone=public --remove-service=cockpit || true
-    firewall-cmd --zone=public --remove-service=dhcpv6-client || true
+    # Set default policies
+    ufw default deny incoming
+    ufw default allow outgoing
+    ufw default deny routed
     
-    # Save changes permanently
-    firewall-cmd --runtime-to-permanent
+    # Allow SSH (important to do before enabling!)
+    ufw allow ssh comment 'SSH access'
     
-    # Allow SSH
-    log_info "Allowing SSH traffic..."
-    firewall-cmd --permanent --add-service=ssh
-    firewall-cmd --reload
+    # Configure logging
+    ufw logging medium
     
-    log_success "Firewall configured correctly"
+    log_info "Enabling UFW..."
+    ufw --force enable
+    
+    log_success "UFW configured and enabled"
+    
+    # Show status
+    log_info "UFW status:"
+    ufw status verbose | tee -a "$LOG_FILE"
+    
+    log_warning "Remember to allow other required ports with: ufw allow <port>/tcp"
 }
 
 ################################################################################
@@ -506,24 +511,50 @@ phase_firewall() {
 phase_automatic_updates() {
     log_info "=== PHASE 10: AUTOMATIC UPDATES CONFIGURATION ==="
     
-    log_info "Installing dnf-automatic..."
-    if ! dnf install -y dnf-automatic &>> "$LOG_FILE"; then
-        log_error "Failed to install dnf-automatic"
+    log_info "Installing unattended-upgrades..."
+    if ! apt install -y unattended-upgrades apt-listchanges &>> "$LOG_FILE"; then
+        log_error "Failed to install unattended-upgrades"
         return 1
     fi
     
-    backup_file /etc/dnf/automatic.conf
+    backup_file /etc/apt/apt. conf.d/50unattended-upgrades
+    backup_file /etc/apt/apt.conf.d/20auto-upgrades
     
-    # Configure only security updates
-    log_info "Configuring dnf-automatic for security patches only..."
-    sed -i 's/upgrade_type = .*/upgrade_type = security/' /etc/dnf/automatic.conf
-    sed -i 's/apply_updates = .*/apply_updates = yes/' /etc/dnf/automatic.conf
+    # Configure automatic security updates
+    log_info "Configuring automatic security updates..."
     
-    # Enable timer
-    systemctl enable dnf-automatic-install.timer
-    systemctl start dnf-automatic-install.timer
+    cat > /etc/apt/apt.conf.d/50unattended-upgrades << 'EOF'
+Unattended-Upgrade:: Allowed-Origins {
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}ESMApps:${distro_codename}-apps-security";
+    "${distro_id}ESM:${distro_codename}-infra-security";
+};
+
+Unattended-Upgrade:: DevRelease "false";
+Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+Unattended-Upgrade::MinimalSteps "true";
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade:: Automatic-Reboot "false";
+Unattended-Upgrade::Automatic-Reboot-Time "03:00";
+EOF
+    
+    cat > /etc/apt/apt. conf.d/20auto-upgrades << 'EOF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Download-Upgradeable-Packages "1";
+APT:: Periodic::AutocleanInterval "7";
+APT::Periodic:: Unattended-Upgrade "1";
+EOF
+    
+    # Enable and start service
+    systemctl enable unattended-upgrades
+    systemctl restart unattended-upgrades
     
     log_success "Automatic security updates configured"
+
+    # Test configuration
+    log_info "Testing unattended-upgrades configuration..."
+    unattended-upgrades --dry-run --debug 2>&1 | tail -20 | tee -a "$LOG_FILE"
 }
 
 ################################################################################
@@ -533,35 +564,10 @@ phase_automatic_updates() {
 phase_verification() {    
     log_info "=== PHASE 11: VERIFICATION AND REPORTS ==="
     
-    # Configuration
-    local scap_version="0.1.79"
-    local scap_url="https://github.com/ComplianceAsCode/content/releases/download/v${scap_version}/scap-security-guide-${scap_version}.tar.gz"
-    local scap_download_dir="${BACKUP_DIR}/scap-download"
-    local scap_extract_dir="${scap_download_dir}/scap-security-guide-${scap_version}"
-    local scap_content_dir="/usr/share/xml/scap/ssg/content"
-    local report_file="${BACKUP_DIR}/cis-verification-report.html"
+        local report_file="${BACKUP_DIR}/cis-verification-report.html"
+    local scap_content="/usr/share/xml/scap/ssg/content/ssg-ubuntu2404-ds.xml"
     
-    log_info "Updating SCAP Security Guide to version ${scap_version}..."
-
-    mkdir -p "$scap_download_dir"
-
-    log_info "Downloading SCAP Security Guide v${scap_version}..."
-    if wget -q -O "${scap_download_dir}/scap-security-guide-${scap_version}.tar.gz" "$scap_url"; then
-        log_success "Downloaded SCAP Security Guide"
-    else
-        log_error "Failed to download SCAP Security Guide from $scap_url"
-        return 1
-    fi
-
-    log_info "Extracting SCAP Security Guide..."
-    if tar -xzf "${scap_download_dir}/scap-security-guide-${scap_version}.tar.gz" -C "$scap_download_dir"; then
-        log_success "Extracted SCAP Security Guide"
-    else
-        log_error "Failed to extract SCAP Security Guide"
-        return 1
-    fi
-
-    if [ ! -f "${scap_extract_dir}/ssg-ubuntu2404-ds.xml" ]; then
+    if [ !  -f "$scap_content" ]; then
         log_error "Ubuntu 24.04 SCAP content not found in downloaded package"
         return 1
     fi
