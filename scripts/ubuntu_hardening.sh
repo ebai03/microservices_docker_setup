@@ -254,24 +254,33 @@ EOF
 }
 
 ################################################################################
-# Phase 5: SELinux Configuration
+# Phase 5: AppArmor Configuration
 ################################################################################
 
-phase_selinux() {
-    log_info "=== PHASE 5: SELINUX CONFIGURATION ==="
+phase_apparmor() {
+    log_info "=== PHASE 5: APPARMOR CONFIGURATION ==="
     
-    backup_file /etc/selinux/config
-    
-    log_info "Installing libselinux..."
-    if ! dnf install -y libselinux &>> "$LOG_FILE"; then
-        log_warning "Failed to install libselinux"
+    log_info "Installing AppArmor utilities..."
+    if ! apt install -y apparmor apparmor-utils apparmor-profiles apparmor-profiles-extra &>> "$LOG_FILE"; then
+        log_warning "Failed to install some AppArmor packages"
     fi
     
-    log_info "Configuring SELinux to permissive mode..."
-    sed -i 's/^SELINUX=.*/SELINUX=permissive/' /etc/selinux/config
+    log_info "Enabling AppArmor..."
+    systemctl enable apparmor
+    systemctl start apparmor
     
-    log_success "SELinux configured to permissive mode, you can change this by editing the file /etc/selinux/config"
-    log_warning "SELinux will enter permissive mode on next reboot"
+    log_info "Checking AppArmor status..."
+    if aa-enabled &>> "$LOG_FILE"; then
+        log_success "AppArmor is enabled"
+    else
+        log_warning "AppArmor is not enabled"
+    fi
+    
+    log_info "AppArmor profiles status:"
+    aa-status | tee -a "$LOG_FILE"
+    
+    log_success "AppArmor configured successfully"
+    log_info "You can manage profiles with: aa-enforce, aa-complain, aa-disable"
 }
 
 
