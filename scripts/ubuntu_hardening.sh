@@ -228,7 +228,7 @@ phase_grub_password() {
     
     # Generate password hash
     log_info "Generating password hash..."
-    local grub_hash=$(echo -e "$grub_pass\n$grub_pass" | grub-mkpasswd-pbkdf2 | grep -oP 'grub. pbkdf2.sha512.\K.*')
+    local grub_hash=$(echo -e "$grub_pass\n$grub_pass" | grub-mkpasswd-pbkdf2 | grep -oP 'grub.pbkdf2.sha512.\K.*')
     
     if [[ -z "$grub_hash" ]]; then
         log_error "Failed to generate GRUB password hash"
@@ -302,26 +302,33 @@ phase_banner_hardening() {
     # Remove OS information from banners
     log_info "Configuring /etc/issue banner..."
     cat > /etc/issue << 'EOF'
-FreeBSD 13.2-RELEASE (GENERIC)
-
-Console login:
+Authorized access only.  All activity may be monitored and reported.
 EOF
     # Same content for network banner
     cp /etc/issue /etc/issue.net
 
-    # Remove cockpit-related MOTD generators
-    rm -f /etc/motd.d/cockpit 2>/dev/null || true
+    # Remove dynamic MOTD generators that reveal OS info
+    log_info "Disabling OS information in MOTD..."
+    if [ -d /etc/update-motd. d ]; then
+        chmod -x /etc/update-motd.d/10-help-text 2>/dev/null || true
+        chmod -x /etc/update-motd.d/50-landscape-sysinfo 2>/dev/null || true
+        chmod -x /etc/update-motd.d/50-motd-news 2>/dev/null || true
+    fi
     
     # Customize MOTD (Message of the Day)
     log_info "Customizing MOTD..."
    cat > /etc/motd << 'EOF'
 
-           __..--''``---....___   _..._    __
- /// //_.-'    .-/";  `        ``<._  ``.''_ `. / // /
-///_.-' _..--.'_    \                    `( ) ) // //
-/ (_..-' // (< _     ;_..__               ; `' / ///
- / // // //  `-._,_)' // / ``--...____..-' /// / //
-
+           /^--^\     /^--^\     /^--^\
+                      \____/     \____/     \____/
+                     /      \   /      \   /      \
+                    |        | |        | |        |
+                     \__  __/   \__  __/   \__  __/
+|^|^|^|^|^|^|^|^|^|^|^|^\ \^|^|^|^/ /^|^|^|^|^\ \^|^|^|^|^|^|^|^|^|^|^|^|
+| | | | | | | | | | | | |\ \| | |/ /| | | | | | \ \ | | | | | | | | | | |
+########################/ /######\ \###########/ /#######################
+| | | | | | | | | | | | \/| | | | \/| | | | | |\/ | | | | | | | | | | | |
+|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|_|
 EOF
 
     # Remove OS info from SSH banner if exists
