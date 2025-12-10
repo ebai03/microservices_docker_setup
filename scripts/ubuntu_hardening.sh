@@ -118,7 +118,7 @@ phase_openscap() {
         return 1
     fi
     log_success "OpenSCAP installed successfully"
-
+    
     # Download and install Ubuntu 24.04 specific content
     log_info "Downloading Ubuntu 24.04 SCAP content..."
     local scap_version="0.1.79"
@@ -147,7 +147,7 @@ phase_openscap() {
         return 1
     fi
     log_success "Ubuntu 24.04 SCAP content installed"
-    
+
     # Generate remediation script
     log_info "Generating CIS Server L1 profile remediation script..."
     local remediate_script="${BACKUP_DIR}/remediate-cis.sh"
@@ -156,14 +156,14 @@ phase_openscap() {
         --profile xccdf_org.ssgproject.content_profile_cis_level1_server \
         /usr/share/xml/scap/ssg/content/ssg-ubuntu2404-ds.xml > "$remediate_script" 2>> "$LOG_FILE"; then
         log_warning "Failed to generate remediation script, this is normal if profile is not complete yet"
-    else    
-    chmod +x "$remediate_script"
-    log_success "Remediation script generated at: $remediate_script"
-    
-    log_info "Running CIS remediation script..."
-    if !  bash "$remediate_script" &>> "$LOG_FILE"; then
-        log_warning "Some remediation script rules may have failed"
-fi
+    else
+        chmod +x "$remediate_script"
+        log_success "Remediation script generated at: $remediate_script"
+        
+        log_info "Running CIS remediation script..."
+        if !  bash "$remediate_script" &>> "$LOG_FILE"; then
+            log_warning "Some remediation script rules may have failed"
+        fi
     fi
     
     log_success "OpenSCAP phase completed"
@@ -178,6 +178,12 @@ phase_tmp_partition() {
     
     # Backup fstab
     backup_file /etc/fstab
+    
+    log_info "Checking current /tmp mount..."
+    if mount | grep -q "on /tmp type tmpfs"; then
+        log_info "/tmp is already mounted as tmpfs, reconfiguring..."
+        umount /tmp || true
+    fi
     
     log_info "Mounting /tmp as tmpfs with security options..."
     if ! mount -t tmpfs -o size=25%,defaults,rw,nosuid,nodev,noexec,relatime tmpfs /tmp 2>> "$LOG_FILE"; then
@@ -216,23 +222,33 @@ phase_grub_password() {
         log_warning "GRUB password configuration skipped"
         return 0
     fi
+
+    # Install grub-common if not present
+    apt install -y grub-common &>> "$LOG_FILE"
     
     # Generate password hash
-    local grub_hash=$(echo -e "$grub_pass\n$grub_pass" | grub2-mkpasswd-pbkdf2 | grep -oP 'grub.pbkdf2.sha512.10000.\K.*')
+    log_info "Generating password hash..."
+    local grub_hash=$(echo -e "$grub_pass\n$grub_pass" | grub-mkpasswd-pbkdf2 | grep -oP 'grub. pbkdf2.sha512.\K.*')
     
+    if [[ -z "$grub_hash" ]]; then
+        log_error "Failed to generate GRUB password hash"
+        return 1
+    fi
+
     mkdir -p "${BACKUP_DIR}/etc/grub.d"
 
     backup_file /etc/grub.d/40_custom
     
     cat >> /etc/grub.d/40_custom << EOF
+# GRUB Password Protection
 set superusers="root"
-password_pbkdf2 root $grub_hash
+password_pbkdf2 root grub.pbkdf2.sha512.$grub_hash
 EOF
     
-    chmod 600 /etc/grub.d/40_custom
+    chmod 755 /etc/grub.d/40_custom
     
     log_info "Regenerating GRUB configuration..."
-    grub2-mkconfig -o /boot/grub2/grub.cfg &>> "$LOG_FILE"
+    update-grub &>> "$LOG_FILE"
     
     log_success "GRUB password configured"
 }
