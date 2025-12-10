@@ -357,47 +357,54 @@ phase_ssh_hardening() {
     
     log_info "Applying SSH security configurations..."
     
-    # Check public key authentication configuration
-    if ! grep -q "^PubkeyAuthentication" /etc/ssh/sshd_config; then
-        log_info "PubkeyAuthentication not configured, setting up..."
-        echo "PubkeyAuthentication yes" >> /etc/ssh/sshd_config
-    else
-        sed -i 's/^#PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
-    fi
-    
-    # Check authorized keys file
-    if ! grep -q "^AuthorizedKeysFile" /etc/ssh/sshd_config; then
-        log_info "AuthorizedKeysFile not configured, setting up..."
-        echo "AuthorizedKeysFile .ssh/authorized_keys" >> /etc/ssh/sshd_config
-    fi
-    
-    if ! grep -q "^# CIS security configurations" /etc/ssh/sshd_config; then
-        log_info "CIS security configurations not found, setting up..."
-        # Additional security configurations recommended by CIS
-        cat >> /etc/ssh/sshd_config << 'EOF'
+    # Create a hardened sshd_config
+    cat > /etc/ssh/sshd_config.d/99-cis-hardening.conf << 'EOF'
+# CIS Ubuntu 24.04 SSH Hardening Configuration
 
-# CIS security configurations
+# Authentication
 PermitRootLogin no
 PermitEmptyPasswords no
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+PasswordAuthentication no
 HostbasedAuthentication no
 IgnoreRhosts yes
-MaxAuthTries 5
+
+# Security Settings
+MaxAuthTries 4
+MaxSessions 10
+MaxStartups 10:30:60
+
+# Timeouts
 ClientAliveInterval 300
 ClientAliveCountMax 2
+LoginGraceTime 60
+
+# Logging
+SyslogFacility AUTH
+LogLevel VERBOSE
+
+# Additional Security
+Banner /etc/issue.net
+UsePAM yes
+PrintLastLog yes
 EOF
-    fi
+    
+    log_success "SSH hardening configuration created"
     
     # Validate sshd_config syntax
     if sshd -t &>> "$LOG_FILE"; then
         log_success "SSH configuration validated"
-        systemctl restart sshd
+systemctl restart ssh ||         systemctl restart sshd
         log_success "SSH service restarted"
     else
-        log_error "SSH configuration error"
+        log_error "SSH configuration error - reverting changes"
+        rm -f /etc/ssh/sshd_config.d/99-cis-hardening.conf
         return 1
     fi
     
     log_success "SSH hardening phase completed"
+log_warning "Make sure you have SSH key authentication configured before logging out!"
 }
 
 ################################################################################
@@ -425,27 +432,35 @@ phase_fail2ban() {
     # Create local configuration
     log_info "Configuring Fail2ban..."
     
-    cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
-    
-    cat > /etc/fail2ban/jail.d/sshd.local << 'EOF'
+        cat > /etc/fail2ban/jail.local << 'EOF'
+[DEFAULT]
+bantime = 1h
+findtime = 10m
+maxretry = 5
+bantime.increment = true
+bantime.factor = 2
+bantime.maxtime = 4w
+
 [sshd]
 enabled = true
 port = ssh
 logpath = %(sshd_log)s
-backend = %(sshd_backend)s
-maxretry = 5
-bantime = 10m
-bantime.factor = 2
-findtime = 10m
+backend = systemd
+maxretry = 3
+bantime = 1d
 EOF
     
     log_success "Fail2ban configuration created"
     
     # Enable and start service
     systemctl enable fail2ban
-    systemctl start fail2ban
+    systemctl restart fail2ban
     
     log_success "Fail2ban enabled and started"
+
+    # Show status
+    log_info "Fail2ban status:"
+    fail2ban-client status sshd | tee -a "$LOG_FILE" || true
 }
 
 ################################################################################
