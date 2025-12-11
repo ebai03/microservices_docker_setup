@@ -319,7 +319,7 @@ EOF
     log_info "Customizing MOTD..."
    cat > /etc/motd << 'EOF'
 
-           /^--^\     /^--^\     /^--^\
+                      /^--^\     /^--^\     /^--^\
                       \____/     \____/     \____/
                      /      \   /      \   /      \
                     |        | |        | |        |
@@ -395,7 +395,7 @@ EOF
     # Validate sshd_config syntax
     if sshd -t &>> "$LOG_FILE"; then
         log_success "SSH configuration validated"
-systemctl restart ssh ||         systemctl restart sshd
+        systemctl restart ssh || systemctl restart sshd
         log_success "SSH service restarted"
     else
         log_error "SSH configuration error - reverting changes"
@@ -404,7 +404,7 @@ systemctl restart ssh ||         systemctl restart sshd
     fi
     
     log_success "SSH hardening phase completed"
-log_warning "Make sure you have SSH key authentication configured before logging out!"
+    log_warning "Make sure you have SSH key authentication configured before logging out!"
 }
 
 ################################################################################
@@ -414,15 +414,9 @@ log_warning "Make sure you have SSH key authentication configured before logging
 phase_fail2ban() {
     log_info "=== PHASE 8: FAIL2BAN INSTALLATION AND CONFIGURATION ==="
     
-    # Install EPEL if not available
-    log_info "Installing EPEL repository..."
-    if ! dnf install -y epel-release &>> "$LOG_FILE"; then
-        log_warning "Failed to install EPEL"
-    fi
-    
     # Install Fail2ban
     log_info "Installing Fail2ban..."
-    if ! dnf install -y fail2ban &>> "$LOG_FILE"; then
+    if ! apt install -y fail2ban &>> "$LOG_FILE"; then
         log_error "Failed to install Fail2ban"
         return 1
     fi
@@ -432,7 +426,7 @@ phase_fail2ban() {
     # Create local configuration
     log_info "Configuring Fail2ban..."
     
-        cat > /etc/fail2ban/jail.local << 'EOF'
+    cat > /etc/fail2ban/jail.local << 'EOF'
 [DEFAULT]
 bantime = 1h
 findtime = 10m
@@ -457,7 +451,7 @@ EOF
     systemctl restart fail2ban
     
     log_success "Fail2ban enabled and started"
-
+    
     # Show status
     log_info "Fail2ban status:"
     fail2ban-client status sshd | tee -a "$LOG_FILE" || true
@@ -476,7 +470,7 @@ phase_firewall() {
         return 1
     fi
     
-        log_info "Configuring UFW rules..."
+    log_info "Configuring UFW rules..."
     
     # Reset UFW to default
     ufw --force reset
@@ -551,7 +545,7 @@ EOF
     systemctl restart unattended-upgrades
     
     log_success "Automatic security updates configured"
-
+    
     # Test configuration
     log_info "Testing unattended-upgrades configuration..."
     unattended-upgrades --dry-run --debug 2>&1 | tail -20 | tee -a "$LOG_FILE"
@@ -564,16 +558,16 @@ EOF
 phase_verification() {    
     log_info "=== PHASE 11: VERIFICATION AND REPORTS ==="
     
-        local report_file="${BACKUP_DIR}/cis-verification-report.html"
+    local report_file="${BACKUP_DIR}/cis-verification-report.html"
     local scap_content="/usr/share/xml/scap/ssg/content/ssg-ubuntu2404-ds.xml"
     
     if [ !  -f "$scap_content" ]; then
         log_warning "SCAP content not found, skipping verification"
         return 0
     fi
-
+    
     log_info "Generating CIS verification report..."
-        
+    
     if oscap xccdf eval \
         --profile xccdf_org.ssgproject.content_profile_cis_level1_server \
         --report "$report_file" \
