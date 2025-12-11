@@ -629,11 +629,11 @@ Available phases:
     2  - openscap          (OpenSCAP installation and CIS Benchmark)
     3  - tmp-partition     (/tmp configuration)
     4  - grub              (GRUB password)
-    5  - selinux           (SELinux configuration)
+    5  - apparmor          (AppArmor configuration)
     6  - banner            (System banner hardening)
     7  - ssh               (SSH hardening)
     8  - fail2ban          (Fail2ban installation)
-    9  - firewall          (Firewall configuration)
+    9  - firewall          (UFW firewall configuration)
     10 - updates           (Automatic updates)
     11 - verification      (Final verification)
 
@@ -649,17 +649,17 @@ list_phases() {
     cat << EOF
 Available hardening phases:
 
-1.  Preparation: Create backup directories and validate system
-2.  OpenSCAP: Install tools and apply CIS Server L1 profile
-3.  /tmp: Configure separate partition with security options
-4.  GRUB: Set password on bootloader
-5.  SELinux: Configure to permissive mode
+1.  Preparation:  Create backup directories and validate system
+2.  OpenSCAP: Install tools and apply CIS Level 1 Server profile
+3.  /tmp:  Configure separate partition with security options
+4.  GRUB:  Set password on bootloader
+5.  AppArmor: Configure mandatory access control (Ubuntu's alternative to SELinux)
 6.  Banner: System banner hardening
 7.  SSH: Hardening configuration and public key authentication
 8.  Fail2ban: Protection against brute force attacks
-9.  Firewall: firewalld configuration
-10. Updates: Configure automatic security patches
-11. Verification: Generate final CIS report
+9.  Firewall: UFW (Uncomplicated Firewall) configuration
+10. Updates: Configure automatic security patches with unattended-upgrades
+11. Verification: Generate final CIS compliance report
 
 EOF
 }
@@ -709,7 +709,7 @@ main() {
     check_root
     check_ubuntu
     
-    log_info "Starting Rocky Linux 9.3 hardening script"
+    log_info "Starting Ubuntu 24.04 LTS hardening script"
     log_info "Log file: $LOG_FILE"
     log_info "Backup directory: $BACKUP_DIR"
     log_info "Date and time: $(date)"
@@ -721,7 +721,8 @@ main() {
             phase_openscap
             phase_tmp_partition
             phase_grub_password
-            phase_selinux
+            phase_apparmor
+            phase_banner_hardening
             phase_ssh_hardening
             phase_fail2ban
             phase_firewall
@@ -740,8 +741,8 @@ main() {
         4|grub)
             phase_grub_password
             ;;
-        5|selinux)
-            phase_selinux
+        5|apparmor)
+            phase_apparmor
             ;;
         6|banner)
             phase_banner_hardening
